@@ -19,7 +19,7 @@ type MyClaims struct {
 // MyToken represents a Json Web Token (JWT)
 type MyToken struct {
 	token     *jwt.Token    // Represents a JWT Token. Different fields will be used depending on whether you're creating or parsing/verifying a token.
-	secret    []byte        // Asymmetric key used for both signing and verification of JWTs
+	secret    []byte        // Symmetric key used for both signing and verification of JWTs
 	mapClaims jwt.MapClaims // Convenience field containing a type asserted value of *jwt.Token.Claims. Populated once parseClaims is run
 }
 

@@ -15,11 +15,11 @@ The unit tests have been written to help me understand the JWT signing and valid
 ### Run:
 ```shell
 export jwt_secret_key='<random-string-used-for-signing-and-validation>'
-go run ./cmd/jwt-demo-asymmetric/main.go --issuer=<issuer> --subject=<subject> --is-admin=<is-admin>
+go run ./cmd/jwt-demo-symmetric/main.go --issuer=<issuer> --subject=<subject> --is-admin=<is-admin>
 
 # Example:
 export jwt_secret_key='eiuneifiuefiuenuifneufnunefoenfof'
-go run ./cmd/jwt-demo-asymmetric/main.go --issuer=auth4.local --subject=mike --is-admin=false
+go run ./cmd/jwt-demo-symmetric/main.go --issuer=auth4.local --subject=mike --is-admin=false
 ```
 
 ### Unit Tests:
