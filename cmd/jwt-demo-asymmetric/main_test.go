@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,36 @@ type Header struct {
 	Typ string `json:"typ"`
 }
 
+// decode decodes base64url string to byte slice
+// I was unable to get base64.URLEncoding working with the base64url format, so copied working code from:
+// https://github.com/dvsekhvalnov/jose2go/blob/v1.5.0/base64url/base64url.go
+func decode(data string) ([]byte, error) {
+	data = strings.Replace(data, "-", "+", -1) // 62nd char of encoding
+	data = strings.Replace(data, "_", "/", -1) // 63rd char of encoding
+
+	switch len(data) % 4 { // Pad with trailing '='s
+	case 0: // no padding
+	case 2:
+		data += "==" // 2 pad chars
+	case 3:
+		data += "=" // 1 pad char
+	}
+
+	return base64.StdEncoding.DecodeString(data)
+}
+
+// encode encodes given byte array to base64url string
+// https://github.com/dvsekhvalnov/jose2go/blob/v1.5.0/base64url/base64url.go
+func encode(data []byte) string {
+	result := base64.StdEncoding.EncodeToString(data)
+	result = strings.Replace(result, "+", "-", -1) // 62nd char of encoding
+	result = strings.Replace(result, "/", "_", -1) // 63rd char of encoding
+	result = strings.Replace(result, "=", "", -1)  // Remove any trailing '='s
+
+	return result
+}
+
+// Test_MyToken_createSignedJWT creates a new JWT using createSignedJWT method and validates the header and payload
 func Test_MyToken_createSignedJWT(t *testing.T) {
 	issuer = "auth-test.local"
 	subject = "testuser1"
@@ -64,6 +95,7 @@ func Test_MyToken_createSignedJWT(t *testing.T) {
 	assert.Equal(t, now.Add(time.Hour).Hour(), payload.ExpiresAt.Hour())
 }
 
+// Test_MyToken_validateSignedToken tests the validateSignedToken method by using a variety of inputs to check the validation process
 func Test_MyToken_validateSignedToken(t *testing.T) {
 	type inputs struct {
 		issuer    string
@@ -169,24 +201,35 @@ func Test_MyToken_validateSignedToken(t *testing.T) {
 	}
 }
 
+// Test_MyToken_manual_modification_of_schema modifies the JWT payload after creation to ensure the signature validation fails
 func Test_MyToken_manual_modification_of_schema(t *testing.T) {
-	// Modify the is_admin payload after JWT generation and confirm the signature fails validation
-}
+	token := NewMyToken([]byte("weak-secret-test-string"), MyClaims{
+		false, // setting to false at token creation
+		jwt.RegisteredClaims{
+			Issuer:    "auth-test.local",
+			Subject:   "testuser1",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	signedToken, err := token.createSignedJWT()
+	assert.NoError(t, err, "error received whilst creating signed JWT token")
 
-// decode decodes base64url string to byte slice
-// I was unable to get base64.URLEncoding working with the base64url format, so copied working code from:
-// https://github.com/dvsekhvalnov/jose2go/blob/v1.5.0/base64url/base64url.go
-func decode(data string) ([]byte, error) {
-	data = strings.Replace(data, "-", "+", -1) // 62nd char of encoding
-	data = strings.Replace(data, "_", "/", -1) // 63rd char of encoding
+	parts := strings.Split(signedToken, ".")
+	jsonEncoded, err := decode(parts[1])
+	assert.NoError(t, err, "error whilst decoding from base64url to a json string")
+	payload := &MyClaims{}
+	err = json.Unmarshal(jsonEncoded, payload)
+	assert.NoError(t, err, "error whilst unmarshalling from json string into Go type")
 
-	switch len(data) % 4 { // Pad with trailing '='s
-	case 0: // no padding
-	case 2:
-		data += "==" // 2 pad chars
-	case 3:
-		data += "=" // 1 pad char
-	}
+	// Tamper with the JWT payload before putting it back together
+	payload.IsAdmin = true // attempt to elevate privileges in the token
 
-	return base64.StdEncoding.DecodeString(data)
+	jsonEncoded, err = json.Marshal(payload)
+	assert.NoError(t, err, "error whilst marshalling from Go type into json string")
+	tamperedPayload := encode(jsonEncoded)
+	tamperedToken := fmt.Sprintf("%s.%s.%s", parts[0], tamperedPayload, parts[2])
+
+	err = token.validateSignedToken(tamperedToken, issuer, subject)
+	assert.ErrorContains(t, err, "signature is invalid", "Expected a signature error as we have modified the payload (isAdmin=true) after signing")
 }

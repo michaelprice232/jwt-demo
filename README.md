@@ -10,6 +10,8 @@ The program takes 3 arguments using flags:
 - `subject`: principle that is the subject of the JWT. Relates to the ['sub' registered field](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2)
 - `is-admin`: boolean which dictates whether the user is an admin. Private (custom) field
 
+The unit tests have been written to help me understand the JWT signing and validation process, such as tampering with the payload after signing to check signature validation.
+
 ### Run:
 ```shell
 export jwt_secret_key='<random-string-used-for-signing-and-validation>'

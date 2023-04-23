@@ -166,5 +166,4 @@ func main() {
 	log.Printf("Token valid. Found the claims: iss: %s, sub: %s, is_admin: %t, exp: %v", issuer, subject, admin, tokenExpiryTime)
 }
 
-// todo: base64url decode/encode the payload to change is_admin to true to test signing
 // todo: create new app using keypair signing: https://golang-jwt.github.io/jwt/usage/signing_methods/
